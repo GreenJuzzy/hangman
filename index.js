@@ -1,9 +1,20 @@
 var cliselect = require("cli-select")
 var chalk = require("chalk")
+var readline = require("readline")
+
+process.setMaxListeners(Infinity)
 
 var allLanguages = ""
 var languagesArray = []
 
+var options = {
+    tries: 10,
+    finished: false
+}
+
+var storage = {
+    wrongLetters: ""
+}
 
 var difficulties = {
     "Hard": { // Use translate to get this
@@ -14,9 +25,9 @@ var difficulties = {
     },
     "Easy": { // Use translate to get this
         Norsk: ["Hovedstad", "Oslo", "Norge", "Europa", "Sommer", "Vinter"],
-        English: ["Queen", "United Kingdom"],
-        Deutsch: ["Auffrischen", "Zug"],
-        Español: [""]
+        English: ["Queen"],
+        Deutsch: ["Auffrischen", "Zug", "Vrienden", ""],
+        Español: ["Amiga", ""]
     }
 }
 
@@ -42,14 +53,24 @@ var translations = {
         end: ["Thank you for playing!"]
     },
     "Deutsch": {
-        start: ["Taal"],
+        start: ["Sprache"],
         which: ["Auf welcher Schwierigkeits Stufe willst du spielen?"],
         difficulty: ["Schwer", "Einfach"],
         correct: ["Die richtige Antwort war,"],
         state: ["Gewonnen!", "Verloren!"],
-        again: [""],
+        again: ["Nochmal spielen?"],
         answer: ["Ja.", "Nein."],
-        end: ["Vielen dank fürs Spielen!"]
+        end: ["Vielen dank fürs Spielen!"],
+        characters: {
+            "ae": "ä",
+            "AE": "Ä",
+            "oe": "ö",
+            "OE": "Ö",
+            "UE": "Ü",
+            "ue": "ü",
+            "ss": "ß",
+            "SS": "ß"
+        }
     },
     "Español": {
         start: ["Idioma"],
@@ -63,6 +84,8 @@ var translations = {
     }
 }
 
+
+var sleep = (ms = 100) => new Promise((r) => setTimeout(r, ms));
 
 /**
  * 
@@ -90,6 +113,8 @@ var select = (Array) => {
     })
 }
 
+
+
 /**
  * 
  * @param {String} fromLanguage The language the word is in.
@@ -110,24 +135,68 @@ var translate = (fromLanguage, element, word) => {
     }
 }
 
-
-
-
-    languagesArray = Object.keys(translations)
-    languagesArray.map((value, index, array) => {
-        if(array[index + 1]) {
-            allLanguages += `${translations[value].start[0]} | `
-        } else {
-            allLanguages += `${translations[value].start[0]}`
+var censorString = (string) => {
+    var result = ""
+    for (i in string.split("")) {
+        if (string.split("")[i] == " ") {
+            result += " "
         }
-    })
+        if (string.split("")[i] !== " ") {
+            result += "_"
+        }
+    }
+    return result
+}
 
+var revealLetter = (correctMessage, theCensored, letter) => {
+    var string = theCensored.split("")
+    var correcta = correctMessage.split("")
+    var ifCorrect = false
+    var completed = false
+    for (i in string) {
+        var correctSplit = correcta[i].toString().toLowerCase()
+        if (correctSplit == letter.toLowerCase()) {
+            ifCorrect = true
+            string[i] = correcta[i]
+        }
+    }
+
+    string = string.join("")
+
+
+    if (!string.includes("_")) completed = true
+    return { string, ifCorrect, completed }
+}
+
+
+languagesArray = Object.keys(translations)
+languagesArray.map((value, index, array) => {
+    if (array[index + 1]) {
+        allLanguages += `${translations[value].start[0]} | `
+    } else {
+        allLanguages += `${translations[value].start[0]}`
+    }
+})
 
 
 async function main() {
     var selectedLanguage
     var selectedDifficulty
     var randomWord
+    var currentWord
+
+
+    async function wonGame() {
+        console.clear()
+
+        console.log(`${translations[selectedLanguage].state[0]}\n\n${translations[selectedLanguage].correct}`)
+    }
+
+    async function lostGame() {
+        
+
+        console.log(translations[selectedLanguage].state[1])
+    }
 
     async function ask() {
         console.log(allLanguages, "\n")
@@ -140,20 +209,48 @@ async function main() {
         await select(translations[selectedLanguage].difficulty).then(result => {
             selectedDifficulty = result.value
             randomWord = randomArray(difficulties[translate(selectedLanguage, "difficulty", selectedDifficulty)][selectedLanguage])
+            currentWord = censorString(randomWord)
             console.clear()
         })
     }
 
+    async function askLetter() {
+        process.stdin.resume()
+        console.log(`${currentWord}\n\nYou have ${chalk.cyan(options.tries)} tries left.\n\n${storage.wrongLetters}`)
+        await sleep()
+        
+        process.stdin.once("data", data => {
+
+            data = data.toString()
+            data = data.replace("\r\n", "")
+            data = data.length >= 2 ? selectedLanguage == "Deutsch" ? translations[selectedLanguage].characters[data] != undefined ? translations[selectedLanguage].characters[data] : data : data : data
+            if (data == "") return askLetter()
+            console.log(data)
+            if (data.length >= 3) return askLetter()
+            currentWord = revealLetter(randomWord, currentWord, data).string
+            var revealed = revealLetter(randomWord, currentWord, data)
+            
+            if (revealed.completed) return wonGame()
+            if (revealed.ifCorrect == false) options.tries--
+            if (revealed.ifCorrect == false) storage.wrongLetters += `${data} `
+            if (options.tries == 0) return lostGame()
+
+            
+            askLetter()
+        })
+        
+
+    }
+
 
     async function startGame() {
-
-
-
+        askLetter()
 
     }
 
     console.clear()
     await ask()
+    
     console.clear()
     await startGame()
 
@@ -161,3 +258,11 @@ async function main() {
 }
 
 main()
+
+
+/* Deutsch
+Ü = ue
+Ä = ae
+Ö = oe
+ß = ss
+*/
