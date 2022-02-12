@@ -1,8 +1,6 @@
 var cliselect = require("cli-select")
 var chalk = require("chalk")
-var readline = require("readline")
 
-process.setMaxListeners(Infinity)
 
 var allLanguages = ""
 var languagesArray = []
@@ -17,17 +15,17 @@ var storage = {
 }
 
 var difficulties = {
-    "Hard": { // Use translate to get this
+    "Hard": {
         Norsk: ["Hovedstaden i Norge er Oslo", "Norge er ett land i Europa", "Harald V er kongen i Norge", "Norge er det fjerde største landet i Europa"],
-        English: ["London is the capital of England", "Queen Elizabeth II is queen of the United Kingdom", ""],
+        English: ["London is the capital of England", "Queen Elizabeth II is queen of the United Kingdom"],
         Deutsch: ["Früher war Deutschland ein getrenntes Land", "Deutschland ist ein Wirtschaftlich starkes Land"],
-        Español: [""],
+        Español: ["Madrid es la capital de España", ""],
     },
-    "Easy": { // Use translate to get this
+    "Easy": {
         Norsk: ["Hovedstad", "Oslo", "Norge", "Europa", "Sommer", "Vinter"],
-        English: ["Queen"],
-        Deutsch: ["Auffrischen", "Zug", "Vrienden", ""],
-        Español: ["Amiga", ""]
+        English: ["Queen", "London", "Math", "Physical", "Activities", "Pod", "Calender", "Backpack", "Telescope", "Night", "Day", "Sky", "Nights", "Nightsky", "Door", "Iron", "Wood", "Tree", "Leave", "Lost", "Win", "Place", "Sugar", "Dad", "Mom"],
+        Deutsch: ["Auffrischen", "Zug", "Vrienden", "Freundin", "Ziel", "Kirche", "Lampe", "Übermorgen", "Normalität", "Schrank", "Sicherheit", "Universum", "Prozent", "Deutschland"],
+        Español: ["Amiga", "Madrid", ""]
     }
 }
 
@@ -40,7 +38,10 @@ var translations = {
         state: ["Du vant!", "Du tapte!"],
         again: ["Vil du spille på nytt?"],
         answer: ["Ja.", "Nei."],
-        end: ["Takk for at du spilte!"]
+        end: ["Takk for at du spilte!"],
+        left: (word, tries, letters) => {
+            return `${word}\n\nDu har ${tries} forsøk igjen.\n\n${letters}`
+        }
     },
     "English": {
         start: ["Language"],
@@ -50,7 +51,10 @@ var translations = {
         state: ["You win!", "You lost!"],
         again: ["Would you like to play again?"],
         answer: ["Yes.", "No."],
-        end: ["Thank you for playing!"]
+        end: ["Thank you for playing!"],
+        left: (word, tries, letters) => {
+            return `${word}\n\nYou have ${tries} tries left.\n\n${letters}`
+        }
     },
     "Deutsch": {
         start: ["Sprache"],
@@ -61,6 +65,9 @@ var translations = {
         again: ["Nochmal spielen?"],
         answer: ["Ja.", "Nein."],
         end: ["Vielen dank fürs Spielen!"],
+        left: (word, tries, letters) => {
+            return `${word}\n\nSie haben noch ${tries} Versuche.\n\n${letters}`
+        },
         characters: {
             "ae": "ä",
             "AE": "Ä",
@@ -80,7 +87,24 @@ var translations = {
         state: ["¡Tú ganas!", "¡Perdiste!"],
         again: ["¿Te gustaría volver a jugar?"],
         answer: ["Si.", "No."],
-        end: ["¡Gracias por jugar!"]
+        end: ["¡Gracias por jugar!"],
+        left: (word, tries, letters) => {
+            return `${word}\n\nTe quedan ${tries} intentos,\n\n${letters}`
+        },
+        characters: {
+            "aa": "à",
+            "AA": "à",
+            "ee": "è",
+            "EE": "È",
+            "ii": "ì",
+            "II": "Ì",
+            "oo": "ò",
+            "OO": "Ò",
+            "uu": "ü",
+            "UU": "Ü",
+            "nn": "ñ",
+            "NN": "Ñ"
+        }
     }
 }
 
@@ -153,9 +177,11 @@ var revealLetter = (correctMessage, theCensored, letter) => {
     var correcta = correctMessage.split("")
     var ifCorrect = false
     var completed = false
+    var alreadyUsed = false
     for (i in string) {
         var correctSplit = correcta[i].toString().toLowerCase()
         if (correctSplit == letter.toLowerCase()) {
+
             ifCorrect = true
             string[i] = correcta[i]
         }
@@ -165,7 +191,7 @@ var revealLetter = (correctMessage, theCensored, letter) => {
 
 
     if (!string.includes("_")) completed = true
-    return { string, ifCorrect, completed }
+    return { string, ifCorrect, completed, }
 }
 
 
@@ -188,14 +214,18 @@ async function main() {
 
     async function wonGame() {
         console.clear()
+        process.stdin.pause()
 
-        console.log(`${translations[selectedLanguage].state[0]}\n\n${translations[selectedLanguage].correct}`)
+
+        console.log(`${translations[selectedLanguage].state[0]}\n\n${translations[selectedLanguage].correct} ${chalk.cyan(randomWord)}`)
     }
 
     async function lostGame() {
-        
+        console.clear()
+        process.stdin.pause()
 
-        console.log(translations[selectedLanguage].state[1])
+
+        console.log(`${translations[selectedLanguage].state[1]}\n\n${translations[selectedLanguage].correct} ${chalk.cyan(randomWord)}`)
     }
 
     async function ask() {
@@ -215,30 +245,32 @@ async function main() {
     }
 
     async function askLetter() {
+        console.clear()
         process.stdin.resume()
-        console.log(`${currentWord}\n\nYou have ${chalk.cyan(options.tries)} tries left.\n\n${storage.wrongLetters}`)
+        console.log(translations[selectedLanguage].left(currentWord, chalk.cyan(options.tries), storage.wrongLetters))
         await sleep()
-        
+
         process.stdin.once("data", data => {
 
             data = data.toString()
             data = data.replace("\r\n", "")
-            data = data.length >= 2 ? selectedLanguage == "Deutsch" ? translations[selectedLanguage].characters[data] != undefined ? translations[selectedLanguage].characters[data] : data : data : data
+            data = data.length > 1 ? selectedLanguage == "Deutsch" ? translations[selectedLanguage].characters[data] != undefined ? translations[selectedLanguage].characters[data] : data : data : data
+            data = data.length > 1 ? selectedLanguage == "Español" ? translations[selectedLanguage].characters[data] != undefined ? translations[selectedLanguage].characters[data] : data : data : data
+            if (storage.wrongLetters.includes(data.toLowerCase() + " ")) return askLetter()
             if (data == "") return askLetter()
-            console.log(data)
-            if (data.length >= 3) return askLetter()
+            if (data.length > 1) return askLetter()
             currentWord = revealLetter(randomWord, currentWord, data).string
             var revealed = revealLetter(randomWord, currentWord, data)
-            
+
             if (revealed.completed) return wonGame()
             if (revealed.ifCorrect == false) options.tries--
             if (revealed.ifCorrect == false) storage.wrongLetters += `${data} `
             if (options.tries == 0) return lostGame()
 
-            
+
             askLetter()
         })
-        
+
 
     }
 
@@ -248,9 +280,10 @@ async function main() {
 
     }
 
+
     console.clear()
     await ask()
-    
+
     console.clear()
     await startGame()
 
@@ -258,11 +291,3 @@ async function main() {
 }
 
 main()
-
-
-/* Deutsch
-Ü = ue
-Ä = ae
-Ö = oe
-ß = ss
-*/
