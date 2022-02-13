@@ -18,14 +18,14 @@ var difficulties = {
     "Hard": {
         Norsk: ["Hovedstaden i Norge er Oslo", "Norge er ett land i Europa", "Harald V er kongen i Norge", "Norge er det fjerde største landet i Europa"],
         English: ["London is the capital of England", "Queen Elizabeth II is queen of the United Kingdom"],
-        Deutsch: ["Früher war Deutschland ein getrenntes Land", "Deutschland ist ein Wirtschaftlich starkes Land"],
-        Español: ["Madrid es la capital de España", ""],
+        Deutsch: ["Frher war Deutschland ein getrenntes Land", "Deutschland ist ein Wirtschaftlich starkes Land"],
+        Español: ["Madrid es la capital de España"],
     },
     "Easy": {
         Norsk: ["Hovedstad", "Oslo", "Norge", "Europa", "Sommer", "Vinter"],
         English: ["Queen", "London", "Math", "Physical", "Activities", "Pod", "Calender", "Backpack", "Telescope", "Night", "Day", "Sky", "Nights", "Nightsky", "Door", "Iron", "Wood", "Tree", "Leave", "Lost", "Win", "Place", "Sugar", "Dad", "Mom"],
         Deutsch: ["Auffrischen", "Zug", "Vrienden", "Freundin", "Ziel", "Kirche", "Lampe", "Übermorgen", "Normalität", "Schrank", "Sicherheit", "Universum", "Prozent", "Deutschland"],
-        Español: ["Amiga", "Madrid", ""]
+        Español: ["Amiga", "Madrid", "Cafè", "Silla", "Tarjetas", "Escritorio", ]
     }
 }
 
@@ -41,6 +41,14 @@ var translations = {
         end: ["Takk for at du spilte!"],
         left: (word, tries, letters) => {
             return `${word}\n\nDu har ${tries} forsøk igjen.\n\n${letters}`
+        },
+        characters: {
+            "ae": "æ",
+            "AE": "Æ",
+            "oo": "ø",
+            "OO": "Ø",
+            "aa": "å",
+            "AA": "Å"
         }
     },
     "English": {
@@ -109,8 +117,6 @@ var translations = {
 }
 
 
-var sleep = (ms = 100) => new Promise((r) => setTimeout(r, ms));
-
 /**
  * 
  * @param {String[]} Array Expects array
@@ -142,7 +148,7 @@ var select = (Array) => {
 /**
  * 
  * @param {String} fromLanguage The language the word is in.
- * @param { "start" | which" | "difficulty" | "correct" | "state" | "again" | "answer" | "end"} element 
+ * @param {"start" | which" | "difficulty" | "correct" | "state" | "again" | "answer" | "end"} element 
  * @param {String} word The word you want to translate from.
  * @example
  * // Only made for this.
@@ -151,8 +157,8 @@ var select = (Array) => {
 
 var translate = (fromLanguage, element, word) => {
     for (_ in translations[fromLanguage]) {
-        for (r in translations[fromLanguage][element]) {
-            for (i in translations[fromLanguage][element][r]) {
+        for (language in translations[fromLanguage][element]) {
+            for (i in translations[fromLanguage][element][language]) {
                 if (translations[fromLanguage][element][i].toLowerCase() == word.toLowerCase()) return translations["English"][element][i]
             }
         }
@@ -174,16 +180,14 @@ var censorString = (string) => {
 
 var revealLetter = (correctMessage, theCensored, letter) => {
     var string = theCensored.split("")
-    var correcta = correctMessage.split("")
+    var correct = correctMessage.split("")
     var ifCorrect = false
     var completed = false
-    var alreadyUsed = false
     for (i in string) {
-        var correctSplit = correcta[i].toString().toLowerCase()
+        var correctSplit = correct[i].toString().toLowerCase()
         if (correctSplit == letter.toLowerCase()) {
-
             ifCorrect = true
-            string[i] = correcta[i]
+            string[i] = correct[i]
         }
     }
 
@@ -215,16 +219,12 @@ async function main() {
     async function wonGame() {
         console.clear()
         process.stdin.pause()
-
-
         console.log(`${translations[selectedLanguage].state[0]}\n\n${translations[selectedLanguage].correct} ${chalk.cyan(randomWord)}`)
     }
 
     async function lostGame() {
         console.clear()
         process.stdin.pause()
-
-
         console.log(`${translations[selectedLanguage].state[1]}\n\n${translations[selectedLanguage].correct} ${chalk.cyan(randomWord)}`)
     }
 
@@ -248,15 +248,15 @@ async function main() {
         console.clear()
         process.stdin.resume()
         console.log(translations[selectedLanguage].left(currentWord, chalk.cyan(options.tries), storage.wrongLetters))
-        await sleep()
-
         process.stdin.once("data", data => {
+            process.stdin.pause()
 
             data = data.toString()
             data = data.replace("\r\n", "")
-            data = data.length > 1 ? selectedLanguage == "Deutsch" ? translations[selectedLanguage].characters[data] != undefined ? translations[selectedLanguage].characters[data] : data : data : data
-            data = data.length > 1 ? selectedLanguage == "Español" ? translations[selectedLanguage].characters[data] != undefined ? translations[selectedLanguage].characters[data] : data : data : data
-            if (storage.wrongLetters.includes(data.toLowerCase() + " ")) return askLetter()
+            data = data.length > 1 ? selectedLanguage == "Deutsch" || selectedLanguage == "Español" || selectedLanguage == "Norsk" ? translations[selectedLanguage].characters[data] != undefined ? translations[selectedLanguage].characters[data] : data : data : data
+            for(i in storage.wrongLetters.split(" ")) {
+                if(storage.wrongLetters.split(" ")[i].toLowerCase() == data.toLowerCase()) return askLetter()
+            }
             if (data == "") return askLetter()
             if (data.length > 1) return askLetter()
             currentWord = revealLetter(randomWord, currentWord, data).string
@@ -270,7 +270,6 @@ async function main() {
 
             askLetter()
         })
-
 
     }
 
