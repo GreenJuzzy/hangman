@@ -6,8 +6,7 @@ var allLanguages = ""
 var languagesArray = []
 
 var options = {
-    tries: 10,
-    finished: false
+    tries: 5,
 }
 
 var storage = {
@@ -18,8 +17,8 @@ var difficulties = {
     "Hard": {
         Norsk: ["Hovedstaden i Norge er Oslo", "Norge er ett land i Europa", "Harald V er kongen i Norge", "Norge er det fjerde største landet i Europa"],
         English: ["London is the capital of England", "Queen Elizabeth II is queen of the United Kingdom"],
-        Deutsch: ["Frher war Deutschland ein getrenntes Land", "Deutschland ist ein Wirtschaftlich starkes Land"],
-        Español: ["Madrid es la capital de España"],
+        Deutsch: ["Früher war Deutschland ein getrenntes Land", "Deutschland ist ein Wirtschaftlich starkes Land"],
+        Español: ["Madrid es la capital de España", "España es el país más grande del sur de Europa", "El Salvador is a country in Central America", "Estados Unidos Mexicanos", "México tiene una población de más de 100 millones"],
     },
     "Easy": {
         Norsk: ["Hovedstad", "Oslo", "Norge", "Europa", "Sommer", "Vinter"],
